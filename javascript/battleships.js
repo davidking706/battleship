@@ -1,5 +1,3 @@
-import { contact } from "./actions.js";
-
 class CreateBattleships {
   static shipTypes = [
     { name: "Carrier", size: 5 },
