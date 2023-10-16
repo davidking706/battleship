@@ -59,6 +59,4 @@ class CreateMap {
   }
 }
 
-// Example usage: //
-const map = new CreateMap([3]);
-console.table(map.getMap());
+export { CreateMap };

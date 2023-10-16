@@ -1,3 +1,5 @@
+import { contact } from "./actions.js";
+
 class CreateBattleships {
   static shipTypes = [
     { name: "Carrier", size: 5 },
@@ -11,21 +13,25 @@ class CreateBattleships {
   constructor(dimensions, ratio = 0.17) {
     this.dimensions = dimensions;
     this.totalCells = dimensions.reduce((acc, val) => acc * val);
-    this.maxShipCells = Math.ceil(this.totalCells * ratio);
-    this.generator = new CoordinateGenerator(dimensions);
+    this.maxShipCoords = Math.ceil(this.totalCells * ratio);
+    this.generator = new CreateCoordinates(dimensions);
     this.ships = this.placeShips();
+    this.usedCoords = [];
   }
 
   // Saves the number and types of ships based on ships allowed //
   shipList() {
-    let cellsLeft = this.maxShipCells;
+    let cellsLeft = this.maxShipCoords;
     let ships = [];
 
     while (cellsLeft > 0) {
-      for (let type of CreateBattleships.shipTypes) {
-        if (cellsLeft >= type.size) {
-          ships.push({ ...type, coordinates: [] });
-          cellsLeft -= type.size;
+      if (this.totalCells <= 64) {
+        CreateBattleships.shipTypes.reverse()
+      }
+      for (let shipType of CreateBattleships.shipTypes) {
+        if (cellsLeft >= shipType.size) {
+          ships.push({ ...shipType, coordinates: [] });
+          cellsLeft -= shipType.size;
         }
       }
     }
@@ -45,9 +51,45 @@ class CreateBattleships {
   getShips() {
     return this.ships;
   }
+
+  locationUsed(coordinate) {
+    const used = this.usedCoords.some(coord => coord.every((num, index) => num === coordinate[index]));
+
+    if (!used) {
+      this.usedCoords.push(coordinate);
+      return false;
+    } else {
+      console.log("You have already picked this location. Miss!");
+      return true;
+    }
+  }
+
+  checkHitOrMiss(predictedCoords) {
+    if (!this.locationUsed(predictedCoords)) {
+      for (let i = 0; i < this.ships.length; i++) {
+        const ship = this.ships[i];
+        const coordinate = ship.coordinates.findIndex(coord => coord.every((num, index) => num === predictedCoords[index]));
+
+        if (coordinate !== -1) {
+          ship.coordinates.splice(coordinate, 1);
+        }
+
+        if (ship.coordinates.length === 0) {
+          this.ships.splice(i, 1);
+          i--;
+          return console.log(`Hit. You have sunk a ${ship.name}. ${this.ships.length} ship remaining.`);
+        }
+      }
+      return console.log("You have missed!");
+    }
+  }
+
+  bot() {
+    return this.generator.randomStart()
+  }
 }
 
-class CoordinateGenerator {
+class CreateCoordinates {
   constructor(dimensions) {
     this.dimensions = dimensions;
     this.takenCoords = new Set();
@@ -85,6 +127,4 @@ class CoordinateGenerator {
   }
 }
 
-// Example //
-const allocator = new CreateBattleships([8, 8, 8]);
-console.log(allocator);
+export { CreateBattleships, CreateCoordinates };
