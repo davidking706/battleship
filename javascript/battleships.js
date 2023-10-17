@@ -8,11 +8,12 @@ class CreateBattleships {
     { name: "Patrol Boat", size: 1 }
   ];
   
-  constructor(dimensions, ratio = 0.17) {
+  constructor(name = 'bot',dimensions, ratio = 0.17) {
+    this.name = name;
     this.dimensions = dimensions;
     this.totalCells = dimensions.reduce((acc, val) => acc * val);
     this.maxShipCoords = Math.ceil(this.totalCells * ratio);
-    this.generator = new CreateCoordinates(dimensions);
+    this.randomGen = new CreateCoordinates(dimensions);
     this.ships = this.placeShips();
     this.usedCoords = [];
   }
@@ -41,7 +42,7 @@ class CreateBattleships {
   placeShips() {
     return this.shipList().map(ship => ({
       ...ship,
-      coordinates: this.generator.generateCoords(ship.size)
+      coordinates: this.randomGen.generateCoords(ship.size)
     }));
   }
 
@@ -57,33 +58,37 @@ class CreateBattleships {
       this.usedCoords.push(coordinate);
       return false;
     } else {
-      console.log("You have already picked this location. Miss!");
+      console.log(`You have already picked this location. Miss!`);
       return true;
     }
   }
 
   checkHitOrMiss(predictedCoords) {
-    if (!this.locationUsed(predictedCoords)) {
-      for (let i = 0; i < this.ships.length; i++) {
-        const ship = this.ships[i];
-        const coordinate = ship.coordinates.findIndex(coord => coord.every((num, index) => num === predictedCoords[index]));
+    for (let i = 0; i < this.ships.length; i++) {
+      const ship = this.ships[i];
+      const coordinate = ship.coordinates.findIndex(coord => coord.every((num, index) => num === predictedCoords[index]));
 
-        if (coordinate !== -1) {
-          ship.coordinates.splice(coordinate, 1);
-        }
-
-        if (ship.coordinates.length === 0) {
-          this.ships.splice(i, 1);
-          i--;
-          return console.log(`Hit. You have sunk a ${ship.name}. ${this.ships.length} ship remaining.`);
-        }
+      if (coordinate !== -1) {
+        ship.coordinates.splice(coordinate, 1);
       }
-      return console.log("You have missed!");
+
+      if (ship.coordinates.length === 0) {
+        this.ships.splice(i, 1);
+        i--;
+        return console.log(`Hit. You have sunken a ${ship.name}. ${this.ships.length} ship remaining.`);
+      }
+      
+      return console.log(`You missed!`);
     }
   }
 
   bot() {
-    return this.generator.randomStart()
+    let guess = this.randomGen.randomStart();
+    while (this.locationUsed(guess)) {
+      guess = this.randomGen.randomStart();
+    }
+    
+    return guess 
   }
 }
 
