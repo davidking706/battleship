@@ -1,4 +1,4 @@
-import { CreateMap } from "./map.js";
+import { GenerateMap } from "./map.js";
 import { CreatePlayer, CreateBot } from "./battleships.js";
 
 function convertStringToCoordinates(str) {
@@ -19,8 +19,20 @@ function convertStringToCoordinates(str) {
   }
 }
 
+function convertToString(coords) {
+  return coords.map((value, index) => {
+    if (index === 0) {
+      return String.fromCharCode(value + 65);
+    } else if (index === 1) {
+      return value + 1;
+    } else if (index === 2) {
+      return `Sector ${value + 1} `;
+    }
+  }).join('');
+}
+
 function startNewGame(players = ['player1', 'player2'], dimensions = 3) {
-  const map = new CreateMap(dimensions);
+  const map = new GenerateMap(dimensions);
 
   return [
     new CreatePlayer(map.dimensions, players[0]),
@@ -28,4 +40,4 @@ function startNewGame(players = ['player1', 'player2'], dimensions = 3) {
   ];
 }
 
-export { convertStringToCoordinates, startNewGame }
+export { convertStringToCoordinates, convertToString, startNewGame }

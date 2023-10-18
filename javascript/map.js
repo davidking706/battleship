@@ -1,4 +1,4 @@
-class CreateMap {
+class GenerateMap {
   constructor(dimensions) {
     // Checks if there is only one value in the given array //
     if (dimensions.length === 1) {
@@ -61,4 +61,4 @@ class CreateMap {
   }
 }
 
-export { CreateMap };
+export { GenerateMap };

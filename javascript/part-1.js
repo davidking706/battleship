@@ -1,16 +1,15 @@
 import * as rs from 'readline-sync'
 import { startNewGame } from './actions.js';
-
-
+import { GenerateMap } from './map.js';
 
 let players = startNewGame();
 let gameStart = true;
 let resettingGame = false;
 
 while (gameStart) {
-  for (const ship of players[1].ships) {
-    console.log(ship.coordinates);
-  }
+  // for (const ship of players[1].ships) {
+  //   console.log(ship.coordinates);
+  // }
 
   for (let i = 0; i < players.length; i++) {
     const player = players[i];

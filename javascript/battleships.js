@@ -1,5 +1,5 @@
 import * as rs from 'readline-sync'
-import { convertStringToCoordinates } from './actions.js';
+import { convertStringToCoordinates, convertToString } from './actions.js';
 
 class CreatePlayer {
   static shipTypes = [
@@ -126,7 +126,10 @@ class CreateBot extends CreatePlayer {
       guess = this.randomGen.randomStart();
     } while (this.locationUsed(guess));
 
-    return console.log(`${this.name} guessed ${guess}`);
+    const coordToString = convertToString(guess);
+    console.log(`${this.name} guessed: ${coordToString}`);
+
+    return guess
   }
 }
 
