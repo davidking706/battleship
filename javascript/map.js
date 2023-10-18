@@ -3,6 +3,8 @@ class CreateMap {
     // Checks if there is only one value in the given array //
     if (dimensions.length === 1) {
       dimensions = [dimensions[0], dimensions[0]];
+    } else if (typeof dimensions === 'number') {
+      dimensions = [dimensions, dimensions];
     }
 
     this.dimensions = dimensions;

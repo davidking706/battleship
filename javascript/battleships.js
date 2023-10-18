@@ -1,4 +1,7 @@
-class CreateBattleships {
+import * as rs from 'readline-sync'
+import { convertStringToCoordinates } from './actions.js';
+
+class CreatePlayer {
   static shipTypes = [
     { name: "Carrier", size: 5 },
     { name: "Battleship", size: 4 },
@@ -8,7 +11,7 @@ class CreateBattleships {
     { name: "Patrol Boat", size: 1 }
   ];
   
-  constructor(name = 'bot',dimensions, ratio = 0.17) {
+  constructor(dimensions, name = 'bot', ratio = 0.17) {
     this.name = name;
     this.dimensions = dimensions;
     this.totalCells = dimensions.reduce((acc, val) => acc * val);
@@ -25,9 +28,9 @@ class CreateBattleships {
 
     while (cellsLeft > 0) {
       if (this.totalCells <= 64) {
-        CreateBattleships.shipTypes.reverse()
+        CreatePlayer.shipTypes.reverse()
       }
-      for (let shipType of CreateBattleships.shipTypes) {
+      for (let shipType of CreatePlayer.shipTypes) {
         if (cellsLeft >= shipType.size) {
           ships.push({ ...shipType, coordinates: [] });
           cellsLeft -= shipType.size;
@@ -58,37 +61,72 @@ class CreateBattleships {
       this.usedCoords.push(coordinate);
       return false;
     } else {
-      console.log(`You have already picked this location. Miss!`);
       return true;
     }
   }
 
-  checkHitOrMiss(predictedCoords) {
-    for (let i = 0; i < this.ships.length; i++) {
-      const ship = this.ships[i];
-      const coordinate = ship.coordinates.findIndex(coord => coord.every((num, index) => num === predictedCoords[index]));
+  checkHitOrMiss(predictedCoords, playerName) {
+    if (predictedCoords !== undefined) {
+      for (let i = 0; i < this.ships.length; i++) {
+        const ship = this.ships[i];
+        const coordinate = ship.coordinates.findIndex(coord => coord.every((num, index) => num === predictedCoords[index]));
 
-      if (coordinate !== -1) {
-        ship.coordinates.splice(coordinate, 1);
-      }
+        if (coordinate !== -1) {
+          ship.coordinates.splice(coordinate, 1);
 
-      if (ship.coordinates.length === 0) {
-        this.ships.splice(i, 1);
-        i--;
-        return console.log(`Hit. You have sunken a ${ship.name}. ${this.ships.length} ship remaining.`);
+          if (ship.coordinates.length === 0) {
+            this.ships.splice(i, 1);
+            i--;
+            return console.log(`Hit. ${playerName} has sunken a ${ship.name}. ${this.ships.length} ship remaining.`);
+          } else {
+            console.log('Hit!');
+          }
+        }
+        
       }
-      
-      return console.log(`You missed!`);
+      return console.log(`${playerName} has missed!`);
     }
   }
 
-  bot() {
-    let guess = this.randomGen.randomStart();
-    while (this.locationUsed(guess)) {
-      guess = this.randomGen.randomStart();
-    }
+  guess() {
+    let guess;
+     do {
+      guess = rs.question("Enter a location to strike (ie 'A2)': ");
+      if (guess === '') {
+        console.log('You did not choose a location. Try again');
+      }
+    } while (guess === '');
+
+    const guessConverted = convertStringToCoordinates(guess);
     
-    return guess 
+    if (!this.locationUsed(guessConverted)) {
+      return guessConverted
+    } else {
+      console.log(`You have already picked this location. Miss!`);
+    }
+  }
+}
+
+class CreateBot extends CreatePlayer {
+  static botNames = ['BotAlpha', 'BotBeta', 'BotGamma', 'BotDelta', 'BotEpsilon'];
+
+  static randomBotName() {
+    const randomIndex = Math.floor(Math.random() * CreateBot.botNames.length);
+    return CreateBot.botNames[randomIndex];
+  }
+  
+  constructor(dimensions, name = CreateBot.randomBotName(), ratio = 0.17) {
+    super(dimensions, name, ratio)
+  }
+
+  guess() {
+    let guess;
+
+    do {
+      guess = this.randomGen.randomStart();
+    } while (this.locationUsed(guess));
+
+    return console.log(`${this.name} guessed ${guess}`);
   }
 }
 
@@ -130,4 +168,4 @@ class CreateCoordinates {
   }
 }
 
-export { CreateBattleships, CreateCoordinates };
+export { CreatePlayer, CreateBot };

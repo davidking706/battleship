@@ -1,3 +1,6 @@
+import { CreateMap } from "./map.js";
+import { CreatePlayer, CreateBot } from "./battleships.js";
+
 function convertStringToCoordinates(str) {
   const separation = str.match(/([A-Z]+|\d+)/ig);
 
@@ -16,4 +19,13 @@ function convertStringToCoordinates(str) {
   }
 }
 
-export { convertStringToCoordinates }
+function startNewGame(players = ['player1', 'player2'], dimensions = 3) {
+  const map = new CreateMap(dimensions);
+
+  return [
+    new CreatePlayer(map.dimensions, players[0]),
+    new CreateBot(map.dimensions)
+  ];
+}
+
+export { convertStringToCoordinates, startNewGame }

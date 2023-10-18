@@ -1,47 +1,46 @@
 import * as rs from 'readline-sync'
-import { CreateMap } from "./map.js";
-import { CreateBattleships } from "./battleships.js";
-import { convertStringToCoordinates } from './actions.js';
-
-const dimensions = [3];
-const map = new CreateMap(dimensions);
-
-const player1 = new CreateBattleships('player1', map.dimensions)
-const player2 = new CreateBattleships('player2', map.dimensions)
+import { startNewGame } from './actions.js';
 
 
-// rs.keyInPause('Press any key to start the game.');
 
-// for (const ship of player1.getShips()) {
-//   console.log(ship);
-// }
+let players = startNewGame();
+let gameStart = true;
+let resettingGame = false;
 
-for (const ship of player2.getShips()) {
-  console.log(ship);
+while (gameStart) {
+  for (const ship of players[1].ships) {
+    console.log(ship.coordinates);
+  }
+
+  for (let i = 0; i < players.length; i++) {
+    const player = players[i];
+
+    console.log(`${player.name}'s turn:`);
+
+    const guess = player.guess();  
+    const otherPlayers = players.filter((_currentplayer, idx) => idx != i);
+    
+    for (const otherPlayer of otherPlayers) {
+      otherPlayer.checkHitOrMiss(guess, player.name);
+      console.log();
+      
+      if (otherPlayer.ships.length === 0) {
+        gameStart = false;
+        
+        const playAgain = rs.keyInYNStrict(`${player.name} has destroyed all battleships. Would you like to play again?: `);
+        if (playAgain) {
+          players = startNewGame();
+          gameStart = true;
+          resettingGame = true;
+          break;
+        }
+      }
+    }
+
+    if (!gameStart || resettingGame) {
+      break;
+    }
+  }
+
+  resettingGame = false;
 }
-
-
-// const gameInPlay = true
-
-// while (gameInPlay) {
-//   const p1Guess = rs.question("Enter a location to strike ie 'A2' ");
-//   const guessConverted = convertStringToCoordinates(p1Guess);
-//   player2.checkHitOrMiss(guessConverted);
-
-//   const botGuess = player2.bot();
-//   console.log(botGuess);
-//   player1.checkHitOrMiss(botGuess);
-// }
-
-// let play = 0;
-// while (play < 4) {
-//   const p1Guess = rs.question("Enter a location to strike (ie 'A2)': ");
-//   const guessConverted = convertStringToCoordinates(p1Guess);
-
-  
-//   if (!player1.locationUsed(guessConverted)) {
-//     player2.checkHitOrMiss(guessConverted)
-//     console.log(player1.usedCoords)
-//   }
-//   play++
-// }
