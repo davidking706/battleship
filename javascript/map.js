@@ -8,11 +8,13 @@ class GenerateMap {
     }
 
     this.dimensions = dimensions;
-    this.currentIndex = 0;
+    this.currentIndex = 1;
     this.map = this.createGrid(dimensions);
   }
 
+  // Creates a grid of the given dimensions //
   createGrid(dimensions) {
+    // If there's only one dimension, create a linear array //
     if (dimensions.length === 1) {
       let map = [];
       for (let i = 0; i < dimensions[0]; i++) {
@@ -20,6 +22,7 @@ class GenerateMap {
       }
       return map;
     } else {
+      // If it's multiple dimensions, create nested arrays for each dimension //
       let outerDimension = dimensions[0];
       let remainingDimensions = dimensions.slice(1);
       let map = [];
@@ -42,6 +45,7 @@ class GenerateMap {
     location[coordinates[coordinates.length - 1]] = value;
   }
 
+  // Gets the value from a specific location in the map //
   getValue(coordinates) {
     let location = this.map;
 

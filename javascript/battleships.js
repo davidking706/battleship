@@ -19,6 +19,7 @@ class CreatePlayer {
     this.randomGen = new CreateCoordinates(dimensions);
     this.ships = this.placeShips();
     this.usedCoords = [];
+    this.isBot = false;
   }
 
   // Saves the number and types of ships based on ships allowed //
@@ -57,6 +58,7 @@ class CreatePlayer {
   locationUsed(coordinate) {
     const used = this.usedCoords.some(coord => coord.every((num, index) => num === coordinate[index]));
 
+    // If the location is not used save the coords in usedCoords //
     if (!used) {
       this.usedCoords.push(coordinate);
       return false;
@@ -67,6 +69,7 @@ class CreatePlayer {
 
   checkHitOrMiss(predictedCoords, playerName) {
     if (predictedCoords !== undefined) {
+      // Loop through all the ships of the player //
       for (let i = 0; i < this.ships.length; i++) {
         const ship = this.ships[i];
         const coordinate = ship.coordinates.findIndex(coord => coord.every((num, index) => num === predictedCoords[index]));
@@ -77,39 +80,54 @@ class CreatePlayer {
           if (ship.coordinates.length === 0) {
             this.ships.splice(i, 1);
             i--;
-            return console.log(`Hit. ${playerName} has sunken a ${ship.name}. ${this.ships.length} ship remaining.`);
+            console.log(`Hit. ${playerName} has sunken a ${ship.name}. ${this.ships.length} ship remaining.`);
+            return 2
           } else {
-            console.log('Hit!');
+            console.log(`Hit! ${ship.name}`);
+            return 1
           }
         }
-        
       }
-      return console.log(`${playerName} has missed!`);
+      console.log(`${playerName} has missed!`);
+      return 0
     }
   }
 
   guess() {
     let guess;
-     do {
-      guess = rs.question("Enter a location to strike (ie 'A2)': ");
-      if (guess === '') {
+    let guessConverted;
+
+    do {
+      // Prompt for a guess
+      guess = rs.question("Enter a location to strike (ie 'A2'): ");
+      
+      if (guess !== '') {
+        guessConverted = convertStringToCoordinates(guess);
+
+        if (!guessConverted.every((coord, index) => coord >= 0 && coord < this.dimensions[index])) {
+          console.log('The chosen location is outside the grid. Try again.');
+        } 
+      } else {
         console.log('You did not choose a location. Try again');
       }
-    } while (guess === '');
+    } while (guess === '' || !guessConverted.every((coord, index) => coord >= 0 && coord < this.dimensions[index]));
 
-    const guessConverted = convertStringToCoordinates(guess);
-    
-    if (!this.locationUsed(guessConverted)) {
-      return guessConverted
-    } else {
+    if (this.locationUsed(guessConverted)) {
       console.log(`You have already picked this location. Miss!`);
     }
+
+    return guessConverted;
+  }
+
+  isHit () {
+
   }
 }
 
 class CreateBot extends CreatePlayer {
-  static botNames = ['BotAlpha', 'BotBeta', 'BotGamma', 'BotDelta', 'BotEpsilon'];
+  static botNames = ['BotAlpha', 'BotBeta', 'BotGamma', 'BotDelta', 'BotEpsilon', 'Owl_Dusty'];
 
+  // Randomly selects a bot name //
   static randomBotName() {
     const randomIndex = Math.floor(Math.random() * CreateBot.botNames.length);
     return CreateBot.botNames[randomIndex];
@@ -117,19 +135,103 @@ class CreateBot extends CreatePlayer {
   
   constructor(dimensions, name = CreateBot.randomBotName(), ratio = 0.17) {
     super(dimensions, name, ratio)
+    this.isBot = true;
+    this.initialHit = undefined;
+    this.previousHit = undefined;
+    this.orientation = undefined;
+    this.direction = undefined;
+    this.nextGuess = undefined;
+    this.changeOrientation = Math.floor(Math.random()) < 0.5 ? true : false;
   }
 
   guess() {
-    let guess;
+    let guess = this.nextGuess;
 
-    do {
-      guess = this.randomGen.randomStart();
-    } while (this.locationUsed(guess));
+    if (guess === undefined) {
+      // Makes sure that the coordinate is not repeated //
+      do {
+        guess = this.randomGen.randomStart();
+      } while (this.locationUsed(guess));
+    }
 
     const coordToString = convertToString(guess);
     console.log(`${this.name} guessed: ${coordToString}`);
 
     return guess
+  }
+
+  target(hit, guess) {
+    switch (hit) {
+      case 0: // Miss //
+        if (this.initialHit === undefined) {
+          break
+        }
+
+        if (this.previousHit === undefined) {
+          if (this.changeOrientation) {
+            let availableOrientations = Array.from({ length: this.initialHit.length }, (_, i) => i);
+            availableOrientations.splice(this.orientation, 1);
+            this.orientation = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+
+            this.changeOrientation = false;
+          } else {
+            this.direction = -this.direction;
+            this.changeOrientation = true;
+          }
+        } else {
+          this.direction = -this.direction;
+        }
+
+        this.nextGuess = [...this.initialHit];
+        this.nextGuess[this.orientation] += this.direction;
+
+        break;
+
+      case 1: // Hit //
+        if (this.initialHit === undefined) {
+          this.initialHit = guess;
+        }
+
+        this.previousHit = this.nextGuess;
+
+        if (this.orientation === undefined) {
+          this.orientation = Math.floor(Math.random() * guess.length);
+          this.direction = Math.random() < 0.5 ? -1 : 1;
+        }
+
+        this.nextGuess = [...guess];
+        this.nextGuess[this.orientation] += this.direction;
+
+        break;
+
+      case 2: // Ship sunk //
+        this.initialHit = undefined;
+        this.previousHit = undefined;
+        this.orientation = undefined;
+        this.direction = undefined;
+        this.nextGuess = undefined;
+
+        break;
+
+      default:
+        break;
+    }
+
+    // If nextGuess exists and is out of bounds for the chosen orientation, adjust it //
+    if (this.nextGuess) {
+      const isWithinBounds = this.nextGuess.every((value, index) => value >= 0 && value < this.dimensions[index]);
+      
+      if (!isWithinBounds) {
+        while (this.nextGuess[this.orientation] < 0 || this.nextGuess[this.orientation] >= this.dimensions[this.orientation]) {
+          this.direction = -this.direction;
+          this.nextGuess[this.orientation] += 2 * this.direction;
+        }
+      }
+  
+      if (this.locationUsed(this.nextGuess)) {
+        this.nextGuess[this.orientation] += this.direction;
+      }
+    }
   }
 }
 

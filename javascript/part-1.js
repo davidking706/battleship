@@ -2,14 +2,20 @@ import * as rs from 'readline-sync'
 import { startNewGame } from './actions.js';
 import { GenerateMap } from './map.js';
 
+rs.keyInPause("Press any key to start the game.");
+
 let players = startNewGame();
 let gameStart = true;
 let resettingGame = false;
 
 while (gameStart) {
+// Cheats //
+  // console.log('-'.repeat(55));
   // for (const ship of players[1].ships) {
   //   console.log(ship.coordinates);
   // }
+  // console.log('-'.repeat(55));
+// Cheats //
 
   for (let i = 0; i < players.length; i++) {
     const player = players[i];
@@ -20,9 +26,12 @@ while (gameStart) {
     const otherPlayers = players.filter((_currentplayer, idx) => idx != i);
     
     for (const otherPlayer of otherPlayers) {
-      otherPlayer.checkHitOrMiss(guess, player.name);
-      console.log();
+      const hit = otherPlayer.checkHitOrMiss(guess, player.name);
+      if (player.isBot) {
+        let allGood = player.target(hit, guess);
+      }
       
+      console.log();
       if (otherPlayer.ships.length === 0) {
         gameStart = false;
         
