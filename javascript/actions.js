@@ -23,18 +23,23 @@ function convertStringToCoordinates(str) {
 }
 
 function convertToString(coords) {
-  return coords.map((value, index) => {
-    if (index === 0) {
-      // Convert the first number to a letter //
-      return String.fromCharCode(value + 65);
-    } else if (index === 1) {
-      // Convert the second number incremented by 1 //
-      return value + 1;
-    } else if (index === 2) {
-      // Convert the third number incremented by 1 next to "Sector " //
-      return `Sector ${value + 1} `;
-    }
-  }).join('');
+  if (coords.length <= 3) {
+    const string = coords.map((value, index) => {
+      if (index === 0) {
+        // Convert the first number to a letter //
+        return String.fromCharCode(value + 65);
+      } else if (index === 1) {
+        // Convert the second number incremented by 1 //
+        return value + 1;
+      } else if (index === 2) {
+        // Convert the third number incremented by 1 next to "Sector " //
+        return `Sector ${value + 1}`;
+      }
+    });
+    return `${string.splice(2,1)} ${string.join('')}`
+  }
+
+  return JSON.stringify(coords)
 }
 
 function startNewGame(dimensions = 3, playerNames = ['player1'], numOfPlayers = 2) {
