@@ -55,16 +55,15 @@ class CreatePlayer {
     return this.ships;
   }
 
-  locationUsed(coordinate) {
+  locationUsed(coordinate, recordIfUnused = true) {
     const used = this.usedCoords.some(coord => coord.every((num, index) => num === coordinate[index]));
 
     // If the location is not used save the coords in usedCoords //
-    if (!used) {
+    if (!used && recordIfUnused) {
       this.usedCoords.push(coordinate);
-      return false;
-    } else {
-      return true;
     }
+    
+    return used;
   }
 
   checkHitOrMiss(predictedCoords, playerName) {
@@ -118,10 +117,6 @@ class CreatePlayer {
 
     return guessConverted;
   }
-
-  isHit () {
-
-  }
 }
 
 class CreateBot extends CreatePlayer {
@@ -134,21 +129,20 @@ class CreateBot extends CreatePlayer {
   }
   
   constructor(dimensions, name = CreateBot.randomBotName(), ratio = 0.17) {
-    super(dimensions, name, ratio)
+    super(dimensions, name, ratio);
     this.isBot = true;
-    this.initialHit = undefined;
-    this.previousHit = undefined;
-    this.orientation = undefined;
-    this.direction = undefined;
-    this.nextGuess = undefined;
-    this.changeOrientation = Math.floor(Math.random()) < 0.5 ? true : false;
+    this.validPredictedPaths = [];
+    this.initialHit;
+    this.subsequentHit;
+    this.moveDelta
+    this.nextGuess;
   }
 
   guess() {
     let guess = this.nextGuess;
-
+    console.log(guess);
+    // If there are valid predicted paths, choose from them. Otherwise, generate a random guess.
     if (guess === undefined) {
-      // Makes sure that the coordinate is not repeated //
       do {
         guess = this.randomGen.randomStart();
       } while (this.locationUsed(guess));
@@ -157,81 +151,105 @@ class CreateBot extends CreatePlayer {
     const coordToString = convertToString(guess);
     console.log(`${this.name} guessed: ${coordToString}`);
 
-    return guess
+    return guess;
   }
 
   target(hit, guess) {
     switch (hit) {
-      case 0: // Miss //
-        if (this.initialHit === undefined) {
-          break
-        }
-
-        if (this.previousHit === undefined) {
-          if (this.changeOrientation) {
-            let availableOrientations = Array.from({ length: this.initialHit.length }, (_, i) => i);
-            availableOrientations.splice(this.orientation, 1);
-            this.orientation = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
-
-            this.changeOrientation = false;
+      case 0:
+        if (this.initialHit !== undefined) {
+          if (this.subsequentHit !== undefined) {
+            // Reverse the direction after missing following a subsequent hit
+            this.moveDelta = this.moveDelta.map(value => -value);
+            this.nextGuess = this.initialHit.map((value, index) => value + this.moveDelta[index]);
           } else {
-            this.direction = -this.direction;
-            this.changeOrientation = true;
+            // For the first miss after an initial hit
+            this.nextGuess = this.getNextMove();
           }
-        } else {
-          this.direction = -this.direction;
-        }
-
-        this.nextGuess = [...this.initialHit];
-        this.nextGuess[this.orientation] += this.direction;
-
+        } 
         break;
 
-      case 1: // Hit //
+      case 1:  // Hit
         if (this.initialHit === undefined) {
+          // First hit
           this.initialHit = guess;
+          this.getValidPredictedPaths();
+          this.nextGuess = this.getNextMove();
+        } else {
+          this.subsequentHit = guess
+          
+          // If moveDelta hasn't been determined yet (i.e., it's the hit right after the initialHit)
+          if (this.moveDelta === undefined) {
+            this.moveDelta = this.subsequentHit.map((value, index) => value - this.initialHit[index]);
+          }
+
+          // Calculate the next guess by adding moveDelta to the recent hit
+          const potentialGuess = this.subsequentHit.map((value, index) => value + this.moveDelta[index]);
+
+          if (this.isWithinBounds(potentialGuess) && !this.locationUsed(potentialGuess, false)) {
+            this.nextGuess = potentialGuess;
+          } else {
+            // Treat it as a miss scenario and adjust moveDelta or select another potential move.
+            this.moveDelta = this.moveDelta.map(value => -value);
+            this.nextGuess = this.initialHit.map((value, index) => value + this.moveDelta[index]);
+          }
         }
+        break;    
 
-        this.previousHit = this.nextGuess;
-
-        if (this.orientation === undefined) {
-          this.orientation = Math.floor(Math.random() * guess.length);
-          this.direction = Math.random() < 0.5 ? -1 : 1;
-        }
-
-        this.nextGuess = [...guess];
-        this.nextGuess[this.orientation] += this.direction;
-
-        break;
-
-      case 2: // Ship sunk //
+      case 2:
         this.initialHit = undefined;
-        this.previousHit = undefined;
-        this.orientation = undefined;
-        this.direction = undefined;
+        this.subsequentHit = undefined;
+        this.moveDelta = undefined;
+        this.validPredictedPaths = [];
         this.nextGuess = undefined;
-
         break;
-
+    
       default:
         break;
     }
+  }
 
-    // If nextGuess exists and is out of bounds for the chosen orientation, adjust it //
-    if (this.nextGuess) {
-      const isWithinBounds = this.nextGuess.every((value, index) => value >= 0 && value < this.dimensions[index]);
+  generatePotentialPaths() {
+    const numDimensions = this.initialHit.length;
+    
+    const directions = [...Array(numDimensions * 2)].map((_, index) => {
+      const dimensionIndex = Math.floor(index / 2);
+      const isPositive = index % 2 === 0;
       
-      if (!isWithinBounds) {
-        while (this.nextGuess[this.orientation] < 0 || this.nextGuess[this.orientation] >= this.dimensions[this.orientation]) {
-          this.direction = -this.direction;
-          this.nextGuess[this.orientation] += 2 * this.direction;
-        }
-      }
+      return [...Array(numDimensions)].map((_, innerIndex) => 
+        innerIndex === dimensionIndex ? (isPositive ? 1 : -1) : 0
+      );
+    });
+    
+    return directions.map(direction => this.initialHit.map((val, index) => val + direction[index]));
+  }
+
+  isWithinBounds(coordinate) {
+    return coordinate.every((value, index) => value >= 0 && value < this.dimensions[index]);
+  }
   
-      if (this.locationUsed(this.nextGuess)) {
-        this.nextGuess[this.orientation] += this.direction;
-      }
-    }
+  getValidPredictedPaths() {
+    // Get all potential paths based on the coordinate
+    const potentialPaths = this.generatePotentialPaths(this.initialHit);
+    
+    // Filter out any paths that the AI has already guessed or are out of bounds
+    const validPaths = potentialPaths.filter(path => !this.locationUsed(path, false) && this.isWithinBounds(path));
+    
+    this.validPredictedPaths = validPaths;
+  }
+
+  getNextMove() {
+    // Choose a random path from the valid paths
+    const randomIndex = Math.floor(Math.random() * this.validPredictedPaths.length);
+    const chosenPath = this.validPredictedPaths[randomIndex];
+
+    // Add the chosen path to usedCoords
+    this.usedCoords.push(chosenPath);
+
+    // Remove the chosen path from validPredictedPaths
+    this.validPredictedPaths.splice(randomIndex, 1);
+
+    return chosenPath;
   }
 }
 

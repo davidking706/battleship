@@ -4,31 +4,32 @@ import { GenerateMap } from './map.js';
 
 rs.keyInPause("Press any key to start the game.");
 
-let players = startNewGame();
+let players = startNewGame(10);
 let gameStart = true;
 let resettingGame = false;
 
 while (gameStart) {
 // Cheats //
-  // console.log('-'.repeat(55));
-  // for (const ship of players[1].ships) {
-  //   console.log(ship.coordinates);
-  // }
-  // console.log('-'.repeat(55));
+  console.log('-'.repeat(55));
+  for (const ship of players[1].ships) {
+    console.log(ship.coordinates);
+  }
+  console.log('-'.repeat(55));
 // Cheats //
 
   for (let i = 0; i < players.length; i++) {
     const player = players[i];
 
     console.log(`${player.name}'s turn:`);
-
-    const guess = player.guess();  
-    const otherPlayers = players.filter((_currentplayer, idx) => idx != i);
+    
+    const guess = player.guess();
+    // console.log(guess);
+    const otherPlayers = players.filter((_currentplayer, index) => index != i);
     
     for (const otherPlayer of otherPlayers) {
       const hit = otherPlayer.checkHitOrMiss(guess, player.name);
       if (player.isBot) {
-        let allGood = player.target(hit, guess);
+        player.target(hit, guess);
       }
       
       console.log();
