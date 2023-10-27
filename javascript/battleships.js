@@ -3,15 +3,15 @@ import { convertStringToCoordinates, convertToString } from './actions.js';
 
 class CreatePlayer {
   static shipTypes = [
-    { name: "Carrier", size: 5 },
-    { name: "Battleship", size: 4 },
-    { name: "Destroyer", size: 3 },
-    { name: "Cruiser", size: 3 },
-    { name: "Submarine", size: 2 },
-    { name: "Patrol Boat", size: 1 }
+    { id: 1, name: "Carrier", size: 5 },
+    { id: 2, name: "Battleship", size: 4 },
+    { id: 3, name: "Destroyer", size: 3 },
+    { id: 4, name: "Cruiser", size: 3 },
+    { id: 5, name: "Submarine", size: 2 },
+    { id: 6, name: "Patrol Boat", size: 1 }
   ];
   
-  constructor(dimensions, name = 'bot', ratio = 0.17) {
+  constructor(dimensions, name = 'bot', ratio = 0.40) {
     this.name = name;
     this.dimensions = dimensions;
     this.totalCells = dimensions.reduce((acc, val) => acc * val);
@@ -31,6 +31,8 @@ class CreatePlayer {
       if (this.totalCells <= 64) {
         CreatePlayer.shipTypes.reverse()
       }
+
+
       for (let shipType of CreatePlayer.shipTypes) {
         if (cellsLeft >= shipType.size) {
           ships.push({ ...shipType, coordinates: [] });
@@ -44,8 +46,9 @@ class CreatePlayer {
 
   // Place ships on the board //
   placeShips() {
-    return this.shipList().map(ship => ({
+    return this.shipList().map((ship, index) => ({
       ...ship,
+      id: (ship.id * 10) + index,
       coordinates: this.randomGen.generateCoords(ship.size)
     }));
   }
@@ -55,15 +58,12 @@ class CreatePlayer {
     return this.ships;
   }
 
-  locationUsed(coordinate, recordIfUnused = true) {
-    const used = this.usedCoords.some(coord => coord.every((num, index) => num === coordinate[index]));
+  locationUsed(coordinate) {
+    return this.usedCoords.some(coord => coord.every((num, index) => num === coordinate[index]));
+  }
 
-    // If the location is not used save the coords in usedCoords //
-    if (!used && recordIfUnused) {
-      this.usedCoords.push(coordinate);
-    }
-    
-    return used;
+  recordLocation(coordinate) {
+    this.usedCoords.push(coordinate);
   }
 
   checkHitOrMiss(predictedCoords, playerName) {
@@ -80,15 +80,15 @@ class CreatePlayer {
             this.ships.splice(i, 1);
             i--;
             console.log(`Hit. ${playerName} has sunken a ${ship.name}. ${this.ships.length} ship remaining.`);
-            return 2
+            return [2, ship.id]
           } else {
             console.log(`Hit! ${ship.name}`);
-            return 1
+            return [1, ship.id]
           }
         }
       }
       console.log(`${playerName} has missed!`);
-      return 0
+      return [0]
     }
   }
 
@@ -113,7 +113,10 @@ class CreatePlayer {
 
     if (this.locationUsed(guessConverted)) {
       console.log(`You have already picked this location. Miss!`);
+    } else {
+      this.recordLocation(guessConverted);
     }
+  
 
     return guessConverted;
   }
@@ -132,6 +135,8 @@ class CreateBot extends CreatePlayer {
     super(dimensions, name, ratio);
     this.isBot = true;
     this.validPredictedPaths = [];
+    this.unsunkShips = []
+    this.currentTarget;
     this.initialHit;
     this.subsequentHit;
     this.moveDelta
@@ -140,7 +145,6 @@ class CreateBot extends CreatePlayer {
 
   guess() {
     let guess = this.nextGuess;
-    console.log(guess);
     // If there are valid predicted paths, choose from them. Otherwise, generate a random guess.
     if (guess === undefined) {
       do {
@@ -148,65 +152,116 @@ class CreateBot extends CreatePlayer {
       } while (this.locationUsed(guess));
     }
 
+    this.recordLocation(guess);
+  
     const coordToString = convertToString(guess);
     console.log(`${this.name} guessed: ${coordToString}`);
 
     return guess;
   }
 
-  target(hit, guess) {
+  target(hit, guess, shipId) {
+    const HIT_VALUES = {
+      MISS: 0,
+      HIT: 1,
+      SINK: 2
+    };
+
     switch (hit) {
-      case 0:
-        if (this.initialHit !== undefined) {
-          if (this.subsequentHit !== undefined) {
-            // Reverse the direction after missing following a subsequent hit
+      case HIT_VALUES.MISS: // Miss
+        if (this.initialHit) {
+          if (this.subsequentHit) {
             this.moveDelta = this.moveDelta.map(value => -value);
             this.nextGuess = this.initialHit.map((value, index) => value + this.moveDelta[index]);
           } else {
-            // For the first miss after an initial hit
             this.nextGuess = this.getNextMove();
           }
-        } 
+        }
         break;
 
-      case 1:  // Hit
-        if (this.initialHit === undefined) {
-          // First hit
-          this.initialHit = guess;
-          this.getValidPredictedPaths();
+      case HIT_VALUES.HIT: // Hit
+        if (!this.isShipTracked(shipId)) {
+          this.trackShip(shipId, guess);
+        }
+
+        if (!this.initialHit) {
+          const { id, coord } = this.unsunkShips[0];
+          this.currentTarget = id;
+          this.initialHit = coord;
+
+          this.generatePotentialPaths();
           this.nextGuess = this.getNextMove();
         } else {
-          this.subsequentHit = guess
-          
-          // If moveDelta hasn't been determined yet (i.e., it's the hit right after the initialHit)
-          if (this.moveDelta === undefined) {
-            this.moveDelta = this.subsequentHit.map((value, index) => value - this.initialHit[index]);
-          }
+          if (shipId === this.currentTarget) {
+            this.subsequentHit = guess;
 
-          // Calculate the next guess by adding moveDelta to the recent hit
-          const potentialGuess = this.subsequentHit.map((value, index) => value + this.moveDelta[index]);
+            if (!this.moveDelta) {
+              this.moveDelta = this.subsequentHit.map((value, index) => value - this.initialHit[index]);
+            }
 
-          if (this.isWithinBounds(potentialGuess) && !this.locationUsed(potentialGuess, false)) {
-            this.nextGuess = potentialGuess;
+            this.nextGuess = this.subsequentHit.map((value, index) => value + this.moveDelta[index]);
           } else {
-            // Treat it as a miss scenario and adjust moveDelta or select another potential move.
-            this.moveDelta = this.moveDelta.map(value => -value);
-            this.nextGuess = this.initialHit.map((value, index) => value + this.moveDelta[index]);
+            // this.trackShip(shipId, guess);
+            this.nextGuess = this.getNextMove();
           }
         }
         break;    
 
-      case 2:
-        this.initialHit = undefined;
-        this.subsequentHit = undefined;
-        this.moveDelta = undefined;
-        this.validPredictedPaths = [];
-        this.nextGuess = undefined;
-        break;
-    
-      default:
+      case HIT_VALUES.SINK: // Sink
+        console.log(shipId, this.currentTarget);
+        if (shipId === this.currentTarget) {
+          this.validPredictedPaths = [];
+          this.currentTarget = undefined;
+          this.moveDelta = undefined;
+          this.subsequentHit = undefined;
+          this.nextGuess = undefined;
+
+          this.unsunkShips = this.unsunkShips.filter((_, index) => index !== 0);
+          // console.log(this.unsunkShips.length);
+          
+          if (this.unsunkShips.length > 0) {
+            const { id, coord } = this.unsunkShips[0];
+            this.currentTarget = id;
+            this.initialHit = coord;
+  
+            this.generatePotentialPaths();
+            this.nextGuess = this.getNextMove();
+          } else {
+            // this.unsunkShips = []
+            this.initialHit = undefined;
+          }
+        } else {
+          this.nextGuess = this.getNextMove();
+        }
         break;
     }
+
+    // console.log('');
+    // console.log("usedCoords: " + this.usedCoords);
+    // console.log("validPredictedPaths: " + this.validPredictedPaths);
+    // console.log("unsunkShips: " + this.unsunkShips.length);
+    // console.log("currentTarget: " + this.currentTarget);
+    // console.log("initialHit: " + this.initialHit);
+    // console.log("subsequentHit: " + this.subsequentHit);
+    // console.log("moveDelta: " + this.moveDelta);
+    // console.log("nextGuess: " + this.nextGuess);
+  }
+
+  isShipTracked(shipId) {
+    return this.unsunkShips.some(ship => ship.id === shipId);
+  }
+
+  trackShip(shipId, guess) {
+    const newShip = {
+      id: shipId,
+      coord: guess
+    }
+
+    this.unsunkShips.push(newShip)
+  }
+
+  isWithinBounds(coordinate) {
+    return coordinate.every((value, index) => value >= 0 && value < this.dimensions[index]);
   }
 
   generatePotentialPaths() {
@@ -220,22 +275,12 @@ class CreateBot extends CreatePlayer {
         innerIndex === dimensionIndex ? (isPositive ? 1 : -1) : 0
       );
     });
-    
-    return directions.map(direction => this.initialHit.map((val, index) => val + direction[index]));
-  }
 
-  isWithinBounds(coordinate) {
-    return coordinate.every((value, index) => value >= 0 && value < this.dimensions[index]);
-  }
-  
-  getValidPredictedPaths() {
-    // Get all potential paths based on the coordinate
-    const potentialPaths = this.generatePotentialPaths(this.initialHit);
-    
-    // Filter out any paths that the AI has already guessed or are out of bounds
-    const validPaths = potentialPaths.filter(path => !this.locationUsed(path, false) && this.isWithinBounds(path));
-    
-    this.validPredictedPaths = validPaths;
+    const potentialPaths = directions
+    .map(direction => this.initialHit.map((val, index) => val + direction[index]))
+    .filter(path => !this.locationUsed(path) && this.isWithinBounds(path));
+
+    this.validPredictedPaths = potentialPaths;
   }
 
   getNextMove() {
@@ -244,7 +289,7 @@ class CreateBot extends CreatePlayer {
     const chosenPath = this.validPredictedPaths[randomIndex];
 
     // Add the chosen path to usedCoords
-    this.usedCoords.push(chosenPath);
+    // this.recordLocation(chosenPath);
 
     // Remove the chosen path from validPredictedPaths
     this.validPredictedPaths.splice(randomIndex, 1);
