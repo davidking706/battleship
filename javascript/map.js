@@ -1,5 +1,5 @@
 class GenerateMap {
-  constructor(dimensions) {
+  constructor(dimensions = 3) {
     // Checks if there is only one value in the given array //
     if (dimensions.length === 1) {
       dimensions = [dimensions[0], dimensions[0]];
@@ -8,7 +8,7 @@ class GenerateMap {
     }
 
     this.dimensions = dimensions;
-    this.currentIndex = 1;
+    this.currentIndex = 0;
     this.map = this.createGrid(dimensions);
   }
 
@@ -21,7 +21,7 @@ class GenerateMap {
     for (let i = 0; i < outerDimension; i++) {
         let innerArray = [];
         for (let j = 0; j < innerDimension; j++) {
-            innerArray.push(' '); // initializing with a blank space
+            innerArray.push(this.currentIndex++); // initializing with a blank space
         }
         map.push(innerArray);
     }
@@ -54,29 +54,46 @@ class GenerateMap {
     return this.map;
   }
 
-  displayGrid() {
+  numberToLetters(n) {
+    let result = '';
+    
+    while (n > 0) {
+      n -= 1;
+      result = String.fromCharCode((n % 26) + 65) + result;
+      n = Math.floor(n / 26);
+    }
+    
+    return result;
+  }
+
+  displayMap() {
     if (this.dimensions.length !== 2) {
-      console.log('Display is only supported for 2D grids.');
-      return;
+        console.log('Display is only supported for 2D grids.');
+        return;
     }
     
     const [rows, cols] = this.dimensions;
+
+    // Determine the maximum width needed for column headers and row labels
+    const maxColWidth = String(cols).length;
+    const maxRowWidth = this.numberToLetters(rows).length;
     
-    let header = '    ';
+    let header = ' '.repeat(maxRowWidth + 2);
     for (let i = 1; i <= cols; i++) {
-      header += i + '   ';
+        header += i.toString().padStart(maxColWidth, ' ');
+        header += (i === cols) ? ' ' : '  ';  // Add double space for all but the last column
     }
     console.log(header);
-    console.log('   ' + '—'.repeat(cols * 4));
+    console.log(' '.repeat(maxRowWidth + 2) + '—'.repeat((maxColWidth + 2) * cols));
     
     for (let i = 0; i < rows; i++) {
-      let row = String.fromCharCode(65 + i) + '  |';
-      for (let j = 0; j < cols; j++) {
-        const value = this.map[i][j];
-        row += ' ' + value + ' |';
-      }
-      console.log(row);
-      console.log('   ' + '—'.repeat(cols * 4));
+        let row = this.numberToLetters(i + 1).padEnd(maxRowWidth) + ' |';
+        for (let j = 0; j < cols; j++) {
+            const value = String(this.map[i][j] = ' ');
+            row += value.padStart(maxColWidth, ' ') + ' |';
+        }
+        console.log(row);
+        console.log(' '.repeat(maxRowWidth + 2) + '—'.repeat((maxColWidth + 2) * cols));
     }
   }
 }

@@ -1,3 +1,4 @@
+import * as rs from 'readline-sync'
 import { GenerateMap } from "./map.js";
 import { CreatePlayer, CreateBot } from "./battleships.js";
 
@@ -42,19 +43,44 @@ function convertToString(coords) {
   return JSON.stringify(coords)
 }
 
-function startNewGame(dimensions = 3, playerNames = ['player1'], numOfPlayers = 2) {
-  const map = new GenerateMap(dimensions);
+function chooseMapSize() {
+  const MAX = 20;
+  const MIN = 3;
+  let value = 3;
+  let key;
+  
+  console.log('    \x1B[1;32mChoose a Map Size\x1B[0m');
+  console.log('[A] <- -> [D]  FIX: [SPACE] \n');
+
+  while (true) {
+    console.log('\x1B[1A\x1B[K|' +
+      (new Array(value - 2)).join('-') + 'O' +
+      (new Array(MAX - value + 1)).join('-') + '| ' + value);
+    key = rs.keyIn('',
+      {hideEchoBack: true, mask: '', limit: 'ad '});
+    if (key === 'a') { if (value > MIN) { value--; } }
+    else if (key === 'd') { if (value < MAX) { value++; } }
+    else { break; }
+  }
+
+  console.log('\nA value the user requested: ' + value);
+
+  return value;
+}
+
+function startNewGame(dimensions = 3, numOfPlayers = 2, playerNames = ['player1'], ratio = 0.17) {
+  const map = new GenerateMap(dimensions)
 
   let players = [];
   for (let i = 0; i < numOfPlayers; i++) {
     if (i < playerNames.length) {
-      players.push(new CreatePlayer(map.dimensions, playerNames[i]));
+      players.push(new CreatePlayer(map.dimensions, playerNames[i], ratio));
     } else {
-      players.push(new CreateBot(map.dimensions));
+      players.push(new CreateBot(map.dimensions, undefined, ratio));
     }
   }
 
   return players
 }
 
-export { convertStringToCoordinates, convertToString, startNewGame }
+export { convertStringToCoordinates, convertToString, startNewGame, chooseMapSize }

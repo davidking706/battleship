@@ -3,15 +3,16 @@ import { startNewGame } from './actions.js';
 import { GenerateMap } from './map.js';
 
 rs.keyInPause("Press any key to start the game.");
-const map = 10;
-let players = startNewGame(map);
+
+let players = startNewGame();
+
 let gameStart = true;
 let resettingGame = false;
 
 while (gameStart) {
 // Cheats //
   console.log('-'.repeat(55));
-  for (const ship of players[0].ships) {
+  for (const ship of players[1].ships) {
     console.log(ship.name, ship.coordinates);
   }
   console.log('-'.repeat(55));
@@ -23,7 +24,6 @@ while (gameStart) {
     console.log(`${player.name}'s turn:`);
     
     const guess = player.guess();
-    // console.log(guess);
     const otherPlayers = players.filter((_currentplayer, index) => index != i);
     
     for (const otherPlayer of otherPlayers) {
@@ -39,7 +39,7 @@ while (gameStart) {
         
         const playAgain = rs.keyInYNStrict(`${player.name} has destroyed all battleships. Would you like to play again?: `);
         if (playAgain) {
-          players = startNewGame(10);
+          players = startNewGame();
           gameStart = true;
           resettingGame = true;
           break;

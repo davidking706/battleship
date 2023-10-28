@@ -11,7 +11,7 @@ class CreatePlayer {
     { id: 6, name: "Patrol Boat", size: 1 }
   ];
   
-  constructor(dimensions, name = 'bot', ratio = 0.40) {
+  constructor(dimensions, name = 'bot', ratio = 0.17) {
     this.name = name;
     this.dimensions = dimensions;
     this.totalCells = dimensions.reduce((acc, val) => acc * val);
@@ -208,7 +208,6 @@ class CreateBot extends CreatePlayer {
         break;    
 
       case HIT_VALUES.SINK: // Sink
-        console.log(shipId, this.currentTarget);
         if (shipId === this.currentTarget) {
           this.validPredictedPaths = [];
           this.currentTarget = undefined;
@@ -287,11 +286,6 @@ class CreateBot extends CreatePlayer {
     // Choose a random path from the valid paths
     const randomIndex = Math.floor(Math.random() * this.validPredictedPaths.length);
     const chosenPath = this.validPredictedPaths[randomIndex];
-
-    // Add the chosen path to usedCoords
-    // this.recordLocation(chosenPath);
-
-    // Remove the chosen path from validPredictedPaths
     this.validPredictedPaths.splice(randomIndex, 1);
 
     return chosenPath;

@@ -1,21 +1,57 @@
-import * as rs from 'readline-sync';
+import * as rs from 'readline-sync'
+import { startNewGame } from './actions.js';
+import { chooseMapSize } from './actions.js';
 
-const MAX = 20;
-const MIN = 3;
-let value = 10;
-let key;
+rs.keyInPause("Press any key to start the game.");
+const mapSize = chooseMapSize();
 
-console.log('[A] <- -> [D]  FIX: [SPACE] \n');
+let players = startNewGame(mapSize);
 
-while (true) {
-  console.log('\x1B[1A\x1B[K|' +
-    (new Array(value - 2)).join('-') + 'O' +
-    (new Array(MAX - value + 1)).join('-') + '| ' + value);
-  key = rs.keyIn('',
-    {hideEchoBack: true, mask: '', limit: 'ad '});
-  if (key === 'a') { if (value > MIN) { value--; } }
-  else if (key === 'd') { if (value < MAX) { value++; } }
-  else { break; }
+let gameStart = true;
+let resettingGame = false;
+
+while (gameStart) {
+// Cheats //
+  console.log('-'.repeat(55));
+  for (const ship of players[1].ships) {
+    console.log(ship.name, ship.coordinates);
+  }
+  console.log('-'.repeat(55));
+// Cheats //
+
+  for (let i = 0; i < players.length; i++) {
+    const player = players[i];
+
+    console.log(`${player.name}'s turn:`);
+    
+    const guess = player.guess();
+    const otherPlayers = players.filter((_currentplayer, index) => index != i);
+    
+    for (const otherPlayer of otherPlayers) {
+      const hit = otherPlayer.checkHitOrMiss(guess, player.name);
+      if (player.isBot) {
+        const [isHit, shipHit] = hit
+        player.target(isHit, guess, shipHit);
+      }
+      
+      console.log();
+      if (otherPlayer.ships.length === 0) {
+        gameStart = false;
+        
+        const playAgain = rs.keyInYNStrict(`${player.name} has destroyed all battleships. Would you like to play again?: `);
+        if (playAgain) {
+          players = startNewGame(mapSize);
+          gameStart = true;
+          resettingGame = true;
+          break;
+        }
+      }
+    }
+
+    if (!gameStart || resettingGame) {
+      break;
+    }
+  }
+
+  resettingGame = false;
 }
-
-console.log('\nA value the user requested: ' + value);
