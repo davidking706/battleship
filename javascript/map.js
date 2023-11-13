@@ -21,7 +21,7 @@ class GenerateMap {
     for (let i = 0; i < outerDimension; i++) {
         let innerArray = [];
         for (let j = 0; j < innerDimension; j++) {
-            innerArray.push(this.currentIndex++); // initializing with a blank space
+            innerArray.push(''); // initializing with a blank space
         }
         map.push(innerArray);
     }
@@ -66,35 +66,91 @@ class GenerateMap {
     return result;
   }
 
-  displayMap() {
+  generateOrientationMatrix() {
+    const matrix = [];
+    for (let i = 0; i < this.dimensions.length; i++) {
+      const orientationArray = new Array(this.dimensions.length).fill(0);
+      orientationArray[i] = 1;
+      matrix.push(orientationArray);
+    }
+    return matrix;
+  }
+  
+
+  createMap() {
     if (this.dimensions.length !== 2) {
-        console.log('Display is only supported for 2D grids.');
-        return;
+      return ['Display is only supported for 2D grids.'];
     }
     
     const [rows, cols] = this.dimensions;
-
-    // Determine the maximum width needed for column headers and row labels
-    const maxColWidth = String(cols).length;
-    const maxRowWidth = this.numberToLetters(rows).length;
     
-    let header = ' '.repeat(maxRowWidth + 2);
+    const cellWidth = 4;
+    const cellPadding = ' '.repeat(cellWidth - 1);
+    
+    // Box-drawing characters
+    const boxChars = {
+      topLeft: '┌',
+      topRight: '┐',
+      bottomLeft: '└',
+      bottomRight: '┘',
+      horizontal: '─',
+      vertical: '│',
+      teeLeft: '├',
+      teeRight: '┤',
+      teeTop: '┬',
+      teeBottom: '┴',
+      cross: '┼'
+    };
+    
+    // ANSI color and style codes
+    const styles = {
+      reset: '\x1B[0m',
+      bold: '\x1B[1m',
+      board: '\x1B[37m',
+      characters: '\x1B[33m'
+    };
+    
+    const rowLabelWidth = this.numberToLetters(rows).length + 1;
+    
+    let mapArray = [];
+    
+    // Create column headers
+    let columnHeader = ' '.repeat(rowLabelWidth + 1);
     for (let i = 1; i <= cols; i++) {
-        header += i.toString().padStart(maxColWidth, ' ');
-        header += (i === cols) ? ' ' : '  ';  // Add double space for all but the last column
+      let header = styles.bold + styles.characters + `${i}`.padStart(Math.floor((cellWidth + `${i}`.length) / 2)).padEnd(cellWidth) + styles.reset;
+      columnHeader += header;
     }
-    console.log(header);
-    console.log(' '.repeat(maxRowWidth + 2) + '—'.repeat((maxColWidth + 2) * cols));
+    mapArray.push(columnHeader);
     
+    // Create top border
+    const topBorder = ' '.repeat(rowLabelWidth) + styles.board + boxChars.topLeft + (boxChars.horizontal.repeat(cellWidth - 1) + boxChars.teeTop).repeat(cols - 1) + boxChars.horizontal.repeat(cellWidth - 1) + boxChars.topRight + styles.reset;
+    mapArray.push(topBorder);
+    
+    // Create each row of the grid
     for (let i = 0; i < rows; i++) {
-        let row = this.numberToLetters(i + 1).padEnd(maxRowWidth) + ' |';
-        for (let j = 0; j < cols; j++) {
-            const value = String(this.map[i][j] = ' ');
-            row += value.padStart(maxColWidth, ' ') + ' |';
-        }
-        console.log(row);
-        console.log(' '.repeat(maxRowWidth + 2) + '—'.repeat((maxColWidth + 2) * cols));
+      const rowLabel = styles.bold + styles.characters + this.numberToLetters(i + 1).padEnd(rowLabelWidth) + styles.reset;
+      let row = `${rowLabel}${styles.board}${boxChars.vertical}${styles.reset}`;
+  
+      for (let j = 0; j < cols; j++) {
+        let cellContent = this.map[i][j];
+        let cellSymbol = cellContent === '' ? ' '.repeat(cellWidth - 1) : ` ${cellContent} `.padEnd(cellWidth - 1, ' ');
+        row += `${cellSymbol}${styles.board}${boxChars.vertical}${styles.reset}`;
+      }
+  
+      mapArray.push(row);
+      
+      // Add middle border if not the last row
+      if (i < rows - 1) {
+        const middleBorder = ' '.repeat(rowLabelWidth) + styles.board + boxChars.teeLeft + (boxChars.horizontal.repeat(cellWidth - 1) + boxChars.cross).repeat(cols - 1) + boxChars.horizontal.repeat(cellWidth - 1) + boxChars.teeRight + styles.reset;
+        mapArray.push(middleBorder);
+      }
     }
+    
+    // Create bottom border
+    const bottomBorder = ' '.repeat(rowLabelWidth) + styles.board + boxChars.bottomLeft + (boxChars.horizontal.repeat(cellWidth - 1) + boxChars.teeBottom).repeat(cols - 1) + boxChars.horizontal.repeat(cellWidth - 1) + boxChars.bottomRight + styles.reset;
+    mapArray.push(bottomBorder);
+    
+    return mapArray;
   }
 }
 

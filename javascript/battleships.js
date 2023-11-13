@@ -2,17 +2,19 @@ import * as rs from 'readline-sync'
 import { convertStringToCoordinates, convertToString } from './actions.js';
 
 class CreatePlayer {
-  static shipTypes = [
-    { id: 1, name: "Carrier", size: 5 },
-    { id: 2, name: "Battleship", size: 4 },
-    { id: 3, name: "Destroyer", size: 3 },
-    { id: 4, name: "Cruiser", size: 3 },
-    { id: 5, name: "Submarine", size: 2 },
-    { id: 6, name: "Patrol Boat", size: 1 }
-  ];
   
-  constructor(dimensions, name = 'bot', ratio = 0.17) {
+  constructor(dimensions, name = 'player1', color, ratio = 0.17) {
+    this.shipTypes = [
+      { id: 1, name: "Carrier", size: 5 },
+      { id: 2, name: "Battleship", size: 4 },
+      { id: 3, name: "Destroyer", size: 3 },
+      { id: 4, name: "Cruiser", size: 3 },
+      { id: 5, name: "Submarine", size: 2 },
+      { id: 6, name: "Patrol Boat", size: 1 }
+    ]; 
+
     this.name = name;
+    this.color = color
     this.dimensions = dimensions;
     this.totalCells = dimensions.reduce((acc, val) => acc * val);
     this.maxShipCoords = Math.ceil(this.totalCells * ratio);
@@ -27,13 +29,14 @@ class CreatePlayer {
     let cellsLeft = this.maxShipCoords;
     let ships = [];
 
+    
     while (cellsLeft > 0) {
       if (this.totalCells <= 64) {
-        CreatePlayer.shipTypes.reverse()
+        this.shipTypes.reverse();
       }
 
 
-      for (let shipType of CreatePlayer.shipTypes) {
+      for (let shipType of this.shipTypes) {
         if (cellsLeft >= shipType.size) {
           ships.push({ ...shipType, coordinates: [] });
           cellsLeft -= shipType.size;
@@ -105,11 +108,13 @@ class CreatePlayer {
 
         if (!guessConverted.every((coord, index) => coord >= 0 && coord < this.dimensions[index])) {
           console.log('The chosen location is outside the grid. Try again.');
-        } 
+        } else if (guessConverted.length !== this.dimensions.length) {
+          console.log('This is not a proper location. Try again.');
+        }
       } else {
-        console.log('You did not choose a location. Try again');
+        console.log('You did not choose a location. Try again.');
       }
-    } while (guess === '' || !guessConverted.every((coord, index) => coord >= 0 && coord < this.dimensions[index]));
+    } while (guess === '' || !guessConverted.every((coord, index) => coord >= 0 && coord < this.dimensions[index]) || guessConverted.length !== this.dimensions.length);
 
     if (this.locationUsed(guessConverted)) {
       console.log(`You have already picked this location. Miss!`);
@@ -123,15 +128,7 @@ class CreatePlayer {
 }
 
 class CreateBot extends CreatePlayer {
-  static botNames = ['BotAlpha', 'BotBeta', 'BotGamma', 'BotDelta', 'BotEpsilon', 'Owl_Dusty'];
-
-  // Randomly selects a bot name //
-  static randomBotName() {
-    const randomIndex = Math.floor(Math.random() * CreateBot.botNames.length);
-    return CreateBot.botNames[randomIndex];
-  }
-  
-  constructor(dimensions, name = CreateBot.randomBotName(), ratio = 0.17) {
+  constructor(dimensions, name = 'bot', ratio = 0.17) {
     super(dimensions, name, ratio);
     this.isBot = true;
     this.validPredictedPaths = [];
